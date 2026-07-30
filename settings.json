@@ -3,9 +3,8 @@
     "allow": [
       "Bash",
       "Read",
-      "Edit(**)",
-      "Read(**)",
-      "Write(**)",
+      "Edit",
+      "Write",
       "Search(**)",
       "WebSearch",
       "WebFetch(*)"
@@ -25,12 +24,144 @@
             "command": "echo '[언어 규칙] 이번 답변을 포함해 모든 사용자 대상 출력은 반드시 한국어로 작성한다. 코드·식별자·명령어·파일 경로·에러/로그 원문만 예외.'"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -r '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -x '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ]; then /bin/sh '/Users/srpn/.orca/agent-hooks/claude-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -r '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -x '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ]; then /bin/sh '/Users/srpn/.orca/agent-hooks/claude-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -r '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -x '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ]; then /bin/sh '/Users/srpn/.orca/agent-hooks/claude-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -r '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -x '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ]; then /bin/sh '/Users/srpn/.orca/agent-hooks/claude-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -r '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -x '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ]; then /bin/sh '/Users/srpn/.orca/agent-hooks/claude-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -r '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -x '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ]; then /bin/sh '/Users/srpn/.orca/agent-hooks/claude-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -r '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -x '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ]; then /bin/sh '/Users/srpn/.orca/agent-hooks/claude-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -r '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -x '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ]; then /bin/sh '/Users/srpn/.orca/agent-hooks/claude-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -r '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -x '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ]; then /bin/sh '/Users/srpn/.orca/agent-hooks/claude-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -r '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ] && [ -x '/Users/srpn/.orca/agent-hooks/claude-hook.sh' ]; then /bin/sh '/Users/srpn/.orca/agent-hooks/claude-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi",
+            "timeout": 10
+          }
+        ]
       }
     ]
   },
   "statusLine": {
     "type": "command",
     "command": "~/.claude/cc-chips/engine.sh"
+  },
+  "enabledPlugins": {
+    "humanize-korean@im-not-ai": true,
+    "ponytail@ponytail": true
+  },
+  "extraKnownMarketplaces": {
+    "im-not-ai": {
+      "source": {
+        "source": "github",
+        "repo": "epoko77-ai/im-not-ai",
+        "ref": "v2.1.0"
+      }
+    },
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail",
+        "ref": "v4.8.4"
+      }
+    }
   },
   "effortLevel": "xhigh",
   "fastMode": true,
