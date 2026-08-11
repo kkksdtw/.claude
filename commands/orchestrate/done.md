@@ -128,6 +128,23 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
 
 4. **리뷰 동선 보관**: code-reviewer의 `focus`/`mechanical`을 §4 PR 본문 작성에 사용하므로 보관한다. code-fix 루프가 돌아 리뷰를 재실행한 경우, 수정으로 줄 번호가 어긋났으므로 **가장 마지막 리뷰 결과의 값을 쓴다.** main 모드는 PR을 만들지 않으므로 사용하지 않는다.
 
+## 2.5. UI 캡처 (UI/UX 변경일 때만)
+
+화면이 바뀌었으면 **최종 화면을 캡처해 완료 보고에 첨부한다.** 코드 설명만으로는 UI 작업 결과를 확인할 수 없다.
+
+**판정** — 아래 둘 다 만족할 때만 수행하고, 아니면 이 절 전체를 건너뛴다:
+- state의 `projectType`이 `frontend` 또는 `fullstack`
+- §2 step 1의 변경 파일에 화면 파일이 포함 (`.tsx`·`.jsx`·`.vue`·`.svelte`·`.astro`, 스타일시트, 템플릿)
+
+**시점** — §1 검증과 §2 코드 리뷰 수정이 **모두 끝난 뒤.** code-fix 루프가 돌면 화면도 바뀌므로 마지막 상태를 찍는다.
+
+1. **대상 화면** — 플랜의 요구사항과 변경 파일에서 해당 화면의 라우트를 도출한다. **최대 3장**, 핵심 화면 우선. 라우트를 특정할 수 없으면 진입 화면 1장.
+2. **캡처** — `run` 스킬(Skill 도구, `skill: "run"`)로 앱을 띄우고 위 화면을 스크린샷한다. 저장 경로: `plans/shots/{identifier}-{화면}.png` — `plans/` 아래이므로 커밋 대상이 아니다.
+3. **실패 처리** — dev 서버 기동 실패·라우트 접근 불가 등으로 캡처가 안 되면 **재시도 1회**, 그래도 안 되면 워크플로우를 막지 않고 넘어간다. **캡처 실패는 STOP 사유가 아니다** — 사유만 §6 완료 보고에 한 줄로 남긴다.
+4. **발화 금지** — 자율 모드에서는 캡처 진행·중간 결과를 출력하지 않는다 ([발화 규율](../orchestrate.md#output-discipline-발화-규율)). 이미지는 §6 완료 보고에서 SendUserFile로 한 번에 첨부한다. 게이트 모드는 GATE 3 요약에 함께 보여줘도 된다.
+
+> `--fast`에서도 생략하지 않는다. UI 변경에서 캡처는 검토 단계가 아니라 **결과 보고 자체**다.
+
 ## GATE 3: Ship (commit 전)
 
 **`autonomy` 값에 따라 분기**한다 ([발화 규율](../orchestrate.md#output-discipline-발화-규율)).
@@ -291,9 +308,10 @@ state.json의 `testDatabase` 필드가 존재하면 `rules/common/test-db-isolat
 2. **Ship 결과**:
    - main 모드: 커밋 해시 + "push는 직접 실행하세요: `git push origin {baseBranch}`"
    - worktree 모드: PR URL + 제목 + 브랜치명
-3. **Test DB Cleanup**: 삭제한 DB 이름 + 결과 (성공/실패)
-4. **참고사항** (해당 시에만, 없으면 생략): fast 모드로 expert review를 건너뛴 사실, 미해결 MEDIUM/LOW findings, 자동 해소하지 못하고 그대로 둔 항목 등 — 중간에 발화하지 않고 미뤄둔 정보를 여기 한 줄로 모은다.
-5. **Cleanup 안내** (실행은 하지 않음, 사용자가 직접 결정):
+3. **UI 캡처** (§2.5를 수행한 경우에만): SendUserFile로 스크린샷을 첨부하고, 각 장이 어떤 화면인지 한 줄씩 설명한다. 캡처에 실패했으면 사유를 한 줄로 보고한다
+4. **Test DB Cleanup**: 삭제한 DB 이름 + 결과 (성공/실패)
+5. **참고사항** (해당 시에만, 없으면 생략): fast 모드로 expert review를 건너뛴 사실, 미해결 MEDIUM/LOW findings, 자동 해소하지 못하고 그대로 둔 항목 등 — 중간에 발화하지 않고 미뤄둔 정보를 여기 한 줄로 모은다.
+6. **Cleanup 안내** (실행은 하지 않음, 사용자가 직접 결정):
    - `/orchestrate:cleanup`으로 일괄 정리 — worktree, 로컬·원격 브랜치, plan·state 파일, 테스트 DB (미리보기 + 승인 후 삭제)
    - worktree 모드는 PR merge 후 정리 권장
    - **채택한 worktree(`worktreeCreated = false`)는 cleanup이 worktree·브랜치를 제거하지 않는다** — plan·state 파일과 테스트 DB만 정리한다
@@ -302,6 +320,7 @@ state.json의 `testDatabase` 필드가 존재하면 `rules/common/test-db-isolat
 
 - [ ] Verification 전체 통과 (lint + build + test) — **fast는 이 phase에서 반드시 1회 실행됐어야 한다**
 - [ ] Code review 완료, CRITICAL/HIGH 해소 (fast도 security + code 병렬 그대로)
+- [ ] UI/UX 변경이면 최종 화면 캡처(최대 3장) 후 완료 보고에 첨부 — 실패 시 사유 한 줄 (STOP 아님)
 - [ ] Gate 3 통과 — 자율 모드: 확인 없이 자동 ship / 게이트 모드: 사용자 확인 (commit 전)
 - [ ] 커밋 완료 (plans/ 파일 제외) — normal: 논리 단위 분할, 그룹 1개면 단일, 최대 4개 / fast: 단일 커밋
 - [ ] `git status --porcelain`에 plans/ 외 미커밋 변경이 남아 있지 않음
