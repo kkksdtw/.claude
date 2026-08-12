@@ -79,6 +79,8 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
    - `security-reviewer`는 **나누지 않는다.** 취약점은 파일을 가로질러 성립하므로(한 곳의 입력이 다른 곳에서 처리) 전체를 한 명이 봐야 한다.
    - 분할해도 모든 에이전트를 **한 메시지에서 동시에** 띄운다.
 
+   > **띄운 뒤에는 턴을 끝낸다.** 완료되면 하니스가 자동으로 재호출한다 — `sleep`으로 기다리거나 상태 파일을 폴링하지 않는다 ([Mandatory Rules 14](../orchestrate.md#mandatory-rules)).
+
 **각 에이전트 프롬프트:**
 ```
 당신은 {security-reviewer | code-reviewer} 전문가입니다.

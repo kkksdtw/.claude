@@ -266,6 +266,7 @@ main 모드에서는 gtr을 사용하지 않는다.
 11. **동시 워크플로우 최대 2개** — 모든 세션이 하나의 usage limit을 공유한다. start phase에서 `plans/*.state.json` 중 진행 중(currentPhase ≠ "completed")인 워크플로우가 이미 2개 이상이면 사용자에게 경고하고, 기존 워크플로우 완료 후 순차 시작을 권고한다. 다른 worktree·레포에서 병렬 실행 중인 세션은 감지할 수 없으므로 사용자에게 한 번 확인한다
 12. **자율 모드에서는 작업 중 발화하지 않는다** — Gate 자동 통과·phase 전환·fast 스킵·중간 요약을 출력하지 않고, 작업지시자 대상 텍스트는 (1) 에스컬레이션 질문 (2) 완료 보고 (3) STOP 세 시점에만 낸다 ([Output Discipline](#output-discipline-발화-규율)). 게이트 모드는 각 Gate에서 요약+승인을 출력한다
 13. **이미 worktree 안에서 실행되면 worktree를 새로 만들지 않는다** — 현재 toplevel이 main 작업 트리가 아니면 그 linked worktree를 채택해 개발한다(브랜치는 현재 브랜치 사용). 채택한 worktree는 orchestrate 소유가 아니므로 cleanup이 제거하지 않는다 (`worktreeCreated = false`)
+14. **병렬 에이전트를 기다릴 때는 턴을 끝낸다 — 폴링 금지** — background 에이전트는 완료 시 하니스가 자동으로 재호출한다. 기다리는 동안 할 일은 없다. `sleep`으로 시간을 보내거나 state·산출물 파일을 반복 확인하지 않는다. background `sleep`은 **완료가 곧 재호출**이라 "깨어남 → 대기 발화 → 다시 sleep"의 자가 웨이크업 루프가 되고, 타이머가 겹쳐 쌓이면 주기가 점점 짧아진다(실측: 5개 중첩, 40분 무한 반복). 완료 알림이 끝내 오지 않는 에이전트는 **`run_in_background: false`로 한 번만** 재실행하고, 그래도 결과가 없으면 STOP한다
 
 ## Idempotency (재진입 처리)
 
