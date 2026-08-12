@@ -17,7 +17,7 @@ Prerequisite: `/orchestrate:review`에서 expert 승인 완료 + Gate 2 통과.
 2. **State 읽기**: Read 도구로 state.json을 읽고 JSON 파싱
 3. **작업 디렉토리 전환**: `workPath` 디렉토리 존재 확인 후 Bash `cd {workPath}` 실행 → 없으면 STOP. 이후 모든 명령은 이 디렉토리에서 실행
 4. **브랜치 확인** (worktree 모드만): `git branch --show-current`가 `branchName`과 일치하는지 확인 → 불일치 시 STOP. main 모드는 생략
-5. **필드 추출**: workspace, **speed**, projectType, techStack, commands, planFile, branchName, baseBranch 등 필요한 값 보관
+5. **필드 추출**: workspace, **speed**, projectType, techStack, commands, **patternAnchors**, planFile, branchName, baseBranch 등 필요한 값 보관
 6. **Phase 갱신**: state의 `currentPhase`를 `"impl"`로, `updatedAt`을 현재 시각으로 갱신 → Write로 저장
 
 ## 1. Load Plan
@@ -45,6 +45,22 @@ state JSON의 `planFile` 경로를 Read 도구로 읽는다.
 
 > 위는 예시일 뿐이다. **반드시 플랜에 정의된 phase 구조를 따를 것.** 플랜에 phase 정의가 없으면 사용자에게 확인한다.
 
+### 2a. 배분 확인 (에이전트 실행 전)
+
+phase 벽시계는 **가장 느린 에이전트 하나**가 결정한다. 출발 전에 배정이 기울었는지만 확인한다 — 시작한 뒤에는 되돌릴 수 없다.
+
+플랜 배정 테이블의 예상 파일 수를 보고:
+
+| 조건 | 행동 |
+|------|------|
+| 최대 / 최소 ≤ 2배 | 그대로 진행 |
+| 2배 초과 | 가장 큰 배정을 **이미 파일이 분리된 경계**로 쪼갠다 (read/write repository, 조회/변경 use case 등). 그런 경계가 없으면 쪼개지 않고 그대로 진행한다 — 충돌 처리 비용이 절약분을 먹는다 |
+| 예상 파일 수가 테이블에 없음 | 플랜의 작업 항목에서 직접 세어 판단한다. 세기 어려우면 그대로 진행 |
+
+쪼갠 경우 담당 파일 범위를 서로 겹치지 않게 다시 적고, 플랜 markdown의 배정 테이블도 갱신한다. **phase당 5명을 넘기지 않는다** — 에이전트마다 프로젝트 파악 고정비가 붙어 그 이상은 벽시계가 더 줄지 않는다.
+
+> 이 확인은 자율 모드에서 발화하지 않는다 ([발화 규율](../orchestrate.md#output-discipline-발화-규율)).
+
 ## 3. Launch Agents
 
 **Workflow 도구 우선**(3b), 미지원·권한 거부 시 Task 병렬 fallback(3c).
@@ -67,12 +83,18 @@ state JSON의 `planFile` 경로를 Read 도구로 읽는다.
 아래는 구현할 내용입니다:
 {해당 에이전트에 배정된 플랜 phase의 구체적 작업 항목을 여기에 복사}
 
+## 참조 패턴 (먼저 읽으세요)
+아래는 이 프로젝트에서 같은 일을 이미 하고 있는 코드입니다. 구현 전에 Read하고 구조·네이밍·에러 처리를 그대로 따르세요.
+{이 에이전트에 배정된 patternAnchors를 "- {path} — {role}" 형태로 나열}
+
 ## 규칙
 1. {workPath} 안에서만 파일을 생성·수정하세요.
-2. 기존 프로젝트의 코드 패턴을 먼저 탐색(Glob/Grep/Read)하고, 동일한 패턴을 따르세요.
+2. 위 참조 패턴을 먼저 읽고 따르세요. 참조 패턴으로 답이 안 나오는 부분만 추가로 탐색(Glob/Grep)하세요 — 패턴을 처음부터 찾는 광역 탐색이 이 단계 소요 시간의 최대 요인입니다.
 3. 다른 에이전트가 담당하는 파일은 수정하지 마세요: {다른 에이전트 담당 파일 목록}
 4. 완료 후 변경한 파일 경로 목록과 작업 요약을 보고하세요.
 ```
+
+> **앵커가 없는 에이전트**(state에 `patternAnchors` 필드가 없거나 · 비었거나 · 이 에이전트에 배정된 것이 없음 — 이전 버전에서 시작해 재개한 워크플로우가 여기 해당한다)는 "참조 패턴" 절을 통째로 빼고, 규칙 2를 원래대로 `기존 프로젝트의 코드 패턴을 먼저 탐색(Glob/Grep/Read)하고, 동일한 패턴을 따르세요.`로 쓴다. 빈 절을 남기거나 관련 없는 파일을 채우지 않는다 — 잘못된 앵커는 탐색보다 나쁘다.
 
 **충돌 방지:** 에이전트 간 파일 겹침이 없도록 각 에이전트에게 담당 파일 범위를 명시한다. 공유 파일(예: module registration)은 마지막 순차 phase에서 한 에이전트가 처리한다.
 

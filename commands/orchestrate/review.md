@@ -20,7 +20,7 @@ Prerequisite: `/orchestrate:start`에서 플랜 작성 완료 + Gate 1 통과.
    - 취소 → STOP: "`/orchestrate:impl`로 진행하세요"
 3. **작업 디렉토리 전환**: `workPath` 디렉토리 존재 확인 후 Bash `cd {workPath}` 실행 → 없으면 STOP. 이후 모든 명령은 이 디렉토리에서 실행
 4. **브랜치 확인** (worktree 모드만): `git branch --show-current`가 `branchName`과 일치하는지 확인 → 불일치 시 STOP. main 모드는 생략
-5. **필드 추출**: workspace, **autonomy**, projectType, techStack, commands, planFile, branchName, baseBranch 등 필요한 값 보관
+5. **필드 추출**: workspace, **autonomy**, projectType, techStack, commands, **patternAnchors**, planFile, branchName, baseBranch 등 필요한 값 보관
 6. **Phase 갱신**: state의 `currentPhase`를 `"review"`로, `updatedAt`을 현재 시각으로 갱신 → Write로 저장
 
 ## 1. Read Plan
@@ -105,15 +105,21 @@ ux-reviewer는 프론트엔드 관점의 리뷰 포커스를 그대로 유지한
 - 기술 스택: {state JSON의 techStack 값}
 - 플랜 파일: {planFile의 절대 경로}
 
+## 참조 패턴
+아래는 이 프로젝트에서 같은 일을 이미 하고 있는 코드입니다. 일관성 판단의 기준으로 삼으세요.
+{state의 patternAnchors를 "- {path} — {role}" 형태로 나열}
+
 ## 작업
 1. Read 도구로 위 플랜 파일을 읽으세요.
 2. 아래 관점에서 플랜을 리뷰하세요:
    {해당 에이전트의 Review Focus — 위 테이블에서 복사}
-3. 프로젝트 소스코드를 탐색하여 기존 패턴·규칙과의 일관성을 확인하세요.
+3. 위 참조 패턴을 읽어 기존 규칙과의 일관성을 확인하세요. 참조 패턴으로 답이 안 나오는 부분만 직접 관련된 파일을 좁게 Grep/Glob 하세요 — **광역 탐색은 리뷰 지연의 주원인**이므로 최소화합니다.
 {REACT_SKILL_BLOCK}
 ```
 
 > 출력 형식(4b의 JSON 블록)을 이 프롬프트 끝에 덧붙여 구조화 출력을 강제한다.
+
+> **앵커가 없으면**(state에 `patternAnchors` 필드가 없거나 빈 배열 — 이전 버전에서 시작해 재개한 워크플로우 포함) "참조 패턴" 절을 빼고 작업 3번을 `프로젝트 소스코드를 탐색해 기존 패턴·규칙과의 일관성을 확인하세요. 플랜과 직접 관련된 범위로 좁혀 탐색합니다.`로 쓴다.
 
 **조건부 삽입: `{REACT_SKILL_BLOCK}`**
 

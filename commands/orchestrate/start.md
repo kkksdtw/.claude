@@ -194,6 +194,23 @@ mkdir -p plans/
    - 모노레포인 경우 작업 대상 패키지의 per-package CLAUDE.md에서 추출
    - 명령어를 찾을 수 없으면 → AskUserQuestion으로 사용자에게 직접 질문
 
+4. **patternAnchors**: 이번 작업과 **같은 형태로 이미 구현된 기존 코드** 경로를 3~5개 뽑는다.
+
+   구현 에이전트의 소요 시간은 파일 수보다 **"이 프로젝트에서 이걸 어떻게 쓰는지 찾는 고정비"**가 지배한다(실측: 에이전트당 약 12분). 에이전트마다 같은 탐색을 반복하므로 이 비용은 에이전트 수만큼 곱해진다. 여기서 한 번 찾아 플랜에 박아두면 그 곱셈이 사라진다.
+
+   - 요구사항의 각 축(예: 목록 조회 / 등록·수정 / 엑셀 처리)마다 **가장 가까운 기존 구현 1개**를 Glob/Grep으로 찾는다.
+   - 레이어별로 전부 나열하지 말고, 에이전트가 **읽고 그대로 따라할 수 있는 대표 파일**을 고른다 — 보통 use case 1개 + repository 1개 + 테스트 1개면 충분하다.
+   - 각 경로에 "무엇의 기준인지"를 한 줄로 붙인다. 경로만 주면 왜 읽어야 하는지 몰라 결국 다시 탐색한다.
+   - 정말 선례가 없는 신규 영역이면 빈 배열로 두고 플랜에 "선례 없음"이라고 적는다. **억지로 비슷하지 않은 파일을 넣지 않는다** — 잘못된 앵커는 탐색보다 나쁘다.
+
+   ```jsonc
+   "patternAnchors": [
+     { "path": "src/coupon/application/list.usecase.ts", "role": "목록 조회 + 페이지네이션 기준" },
+     { "path": "src/coupon/infra/coupon.read.repository.ts", "role": "read repository 쿼리 패턴" },
+     { "path": "test/coupon.e2e-spec.ts", "role": "E2E 테스트 구조·픽스처 기준" }
+   ]
+   ```
+
 ### 4b. Base Branch 감지
 
 ```bash
@@ -225,6 +242,11 @@ Write 도구로 아래 JSON을 생성한다 (모든 필드를 채울 것):
     "build": "{build 명령어}",
     "test": "{test 명령어}"
   },
+
+  // 4a step 4 — 구현 에이전트가 탐색 대신 읽고 따라할 기존 구현. 선례 없으면 []
+  "patternAnchors": [
+    { "path": "{기존 구현 경로}", "role": "{무엇의 기준인지 한 줄}" }
+  ],
 
   "currentPhase": "start",
   "autonomy": "{auto | gated — step 3의 Autonomy 결정 표}",
@@ -292,6 +314,24 @@ Write 도구로 사람이 읽는 플랜 문서를 생성한다. **`speed` 값에
 Workspace·Tech Stack·Affected Layers는 생략한다 — 앞의 둘은 state JSON에 이미 있고, Affected Layers는 fast가 대상으로 하는 작은 변경에서 Implementation Phases와 사실상 중복이다. Status는 `"Plan ready — review skipped (fast), proceed with /orchestrate:impl"`로 적는다.
 
 > **Implementation Phases는 fast에서도 축약하지 않는다.** impl phase가 이 섹션에서 에이전트 배정을 추출한다 — 여기가 부실하면 구현이 어긋나고, 재작업 비용이 절약분을 넘는다.
+
+#### Implementation Phases 작성 규칙
+
+phase 내 에이전트는 **동시에 출발해 가장 느린 하나가 끝나야 다음 phase로 간다.** 그래서 배정이 기울면 먼저 끝난 에이전트가 그만큼 논다(실측: 8 : 23 : 35파일 배분에서 최소 담당 에이전트가 12분 37초 유휴). 배정은 논리적 축이 아니라 **크기**로 맞춘다.
+
+배정 테이블에 **에이전트별 예상 파일 수를 반드시 적는다.** 적지 않으면 기울었는지 알 수 없다.
+
+| 에이전트 | 담당 | 예상 파일 | 참조 앵커 |
+|---|---|---|---|
+| A1 | ... | 12 | `4a의 patternAnchors 중 이 에이전트가 읽을 것` |
+
+**균형 규칙:**
+
+- **최대 / 최소 ≤ 2배.** 넘으면 가장 큰 배정을 쪼갠다. 쪼갤 때는 이미 파일이 분리된 경계를 쓴다(read/write repository, 조회/변경 use case 등) — 그런 경계가 없으면 쪼개지 말고 그대로 둔다. 충돌 처리 비용이 절약분을 먹는다.
+- **에이전트당 18파일 상한.** 넘으면 분할 후보다.
+- **phase당 3~5명.** 에이전트마다 프로젝트 파악 고정비(약 12분)가 붙으므로 6명 이상으로 쪼개도 벽시계가 더 줄지 않는다. 5명을 넘겨야 할 만큼 크면 phase를 나누는 편이 낫다.
+
+**앵커 매핑:** 4a에서 뽑은 `patternAnchors`를 각 에이전트에 나눠 배정한다. impl phase가 이 매핑을 에이전트 프롬프트에 그대로 넣어 "패턴 찾기"를 "패턴 읽기"로 바꾼다. 앵커가 없는 에이전트는 비워둔다.
 
 > 경로 등 메타데이터는 plan markdown에 중복 기재하지 않는다. State JSON이 single source of truth.
 
