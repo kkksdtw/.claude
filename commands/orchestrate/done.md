@@ -68,9 +68,11 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
    git diff --name-only {baseBranch}...HEAD            # worktree 모드: 이미 커밋된 변경이 있으면 합산
    ```
    두 출력을 합쳐 변경 파일 목록을 만든다. `plans/{identifier}.md`, `plans/{identifier}.state.json`은 제외한다.
-2. **에이전트 프롬프트 작성 및 병렬 실행**: Task 도구로 `security-reviewer`와 `code-reviewer`를 **한 메시지에서 동시에** 실행
+2. **에이전트 프롬프트 작성 및 병렬 실행**: Task 도구로 `security-reviewer` · `code-reviewer` · **ponytail 렌즈**를 **한 메시지에서 동시에** 실행
 
-   > **모델**: `code-reviewer`는 `model: "sonnet"`으로 핀 고정한다. `security-reviewer`는 실제 코드의 취약점 캐치율을 위해 opus를 유지한다(핀하지 않음 — 메인 모델 상속).
+   > **모델**: `code-reviewer`와 ponytail 렌즈는 `model: "sonnet"`으로 핀 고정한다. `security-reviewer`는 실제 코드의 취약점 캐치율을 위해 opus를 유지한다(핀하지 않음 — 메인 모델 상속).
+
+   > **ponytail 렌즈**는 과잉설계만 찾는 세 번째 리뷰어다 (`subagent_type: "general-purpose"`, 프롬프트는 아래 별도 블록). 나머지 둘은 **빠진 것**을 찾는 직업이라 아무도 **불필요한 것**을 찾지 않는다 — 이 자리를 비워두면 리뷰 결과가 항상 순증가한다. `security-reviewer`처럼 **나누지 않는다**(중복은 파일을 가로질러 성립한다).
 
    **변경 파일이 25개를 넘으면 `code-reviewer`를 그룹별로 나눠 띄운다.** 한 리뷰어가 전부 읽으면 파일 수에 비례해 늘어진다(실측: 69파일 단일 리뷰 8분 22초, 도구 호출 106회). 그룹은 **§3a의 커밋 그룹 기준을 그대로 쓴다** — 스키마·마이그레이션 / 핵심 구현 / 테스트. 새 분류를 만들지 않는다.
 
@@ -129,9 +131,45 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
 문제가 없으면 "findings": []
 ```
 
+**ponytail 렌즈 프롬프트 (별도):**
+```
+이 변경분에서 **지울 수 있는 것만** 찾으세요. 정확성 버그·보안·성능은 범위 밖입니다 (다른 리뷰어가 봅니다).
+
+## 컨텍스트
+- 프로젝트 경로: {workPath}
+- 기술 스택: {state JSON의 techStack 값}
+- 변경된 파일 목록: {step 1의 전체 변경 파일 목록 — 나누지 않는다}
+
+## 작업
+위 파일들을 Read하고, 아래 태그에 해당하는 것만 찾으세요:
+- `delete` — 죽은 코드, 아무도 쓰지 않는 유연성, 요청되지 않은 기능. 대체물 없음
+- `stdlib` — 표준 라이브러리에 있는 것을 손으로 구현. 함수명을 명시
+- `native` — 플랫폼·프레임워크 기본 기능이 이미 하는 일. 기능명을 명시
+- `yagni` — 구현체가 하나뿐인 추상화, 아무도 설정하지 않는 config, 호출부가 하나인 레이어
+- `shrink` — 같은 로직, 더 짧게. 짧은 형태를 제시
+
+**절대 지우자고 하지 않는 것:** 입력 검증(신뢰 경계), 데이터 손실을 막는 에러 처리, 보안 조치, 접근성, 테스트 — 스모크 테스트 1개는 ponytail의 최소치이지 군더더기가 아닙니다.
+
+## 출력 형식
+아래 JSON 하나만 출력하세요 (다른 텍스트 없이).
+{
+  "agent": "ponytail",
+  "cuts": [
+    { "file": "src/x.ts", "lines": "12-38", "tag": "stdlib", "what": "27줄 검증 클래스", "replacement": "...", "delta": -26 }
+  ],
+  "net": -120
+}
+지울 것이 없으면 "cuts": [], "net": 0
+```
+
 3. **결과 처리** (state의 `attempts.codeFix`로 추적 — **normal 최대 2회 / fast 최대 1회**):
    - CRITICAL/HIGH 발견 → `attempts.codeFix` +1 → **`implVerifiedClean=false`로 갱신** → state Write → 수정 후 step 1 verification loop 재실행 (수정으로 코드가 바뀌었으므로 스킵 조건이 거짓 → 반드시 전체 검증)
    - MEDIUM 이하만 → **자율 모드**: 발화하지 않고 자동 진행 (§6 완료 보고에 합산) · **게이트 모드**: 사용자에게 보고 후 진행 여부 확인
+   - **ponytail `cuts`는 severity 규칙에 태우지 않는다.** 과잉설계 지적은 거의 전부 MEDIUM 이하로 매겨지므로 위 규칙에 넣으면 자율 모드에서 통째로 버려진다 — 리뷰어를 추가한 의미가 사라진다. 대신 **"고치는 diff가 지우는 diff보다 작은가"**로 판단해 그 자리에서 적용한다:
+     - **적용**: `delta`가 음수이고 수정이 **기계적이며 그 파일 안에서 닫히는** cut (stdlib·native 교체, 죽은 코드 삭제, 구현체 하나뿐인 추상화 인라인화, shrink)
+     - **보류**: 여러 파일의 계약을 건드리거나 재설계가 필요한 cut → 적용하지 않고 §6 완료 보고에 한 줄로 남긴다
+     - **제외**: 입력 검증·보안·에러 처리·접근성·테스트에 걸리는 cut → 적용하지 않는다. 다른 리뷰어의 판단이 우선한다
+     - **적용은 1회만.** 적용했으면 `implVerifiedClean=false` → state Write → step 1 verification loop 재실행. `attempts.codeFix`는 **소모하지 않는다** (CRITICAL 해소 예산을 삭제 작업이 먹으면 안 된다). 재실행한 리뷰에서 나온 `cuts`는 다시 적용하지 않는다
    - `attempts.codeFix`가 한도(normal 2 / fast 1)에 도달했는데 CRITICAL/HIGH 잔존 → 사용자에게 판단 요청 (자율 모드도 [에스컬레이션 조건](../orchestrate.md#autonomy-mode-게이트-자동-통과-vs-승인) 6번으로 멈춤. 카운터는 state에 영속 — 세션이 끊겨도 유지)
 
    > fast의 한도가 1인 것은 **수정 1회 후에도 CRITICAL이 남으면 자동 해소가 아니라 사람 판단이 필요한 상황**이라는 뜻이다. 리뷰 자체나 첫 수정 시도를 생략하는 것이 아니다 — fast에서도 리뷰는 두 에이전트 병렬로 그대로 돈다.
@@ -331,7 +369,8 @@ state.json의 `testDatabase` 필드가 존재하면 `rules/common/test-db-isolat
 ## Done Criteria
 
 - [ ] Verification 전체 통과 (lint + build + test) — **fast는 이 phase에서 반드시 1회 실행됐어야 한다**
-- [ ] Code review 완료, CRITICAL/HIGH 해소 (fast도 security + code 병렬 그대로)
+- [ ] Code review 완료, CRITICAL/HIGH 해소 (fast도 security + code + ponytail 병렬 그대로)
+- [ ] ponytail `cuts` 처리 — 적용 가능한 것은 적용(1회) 후 재검증 / 보류·제외한 것은 §6에 한 줄
 - [ ] UI/UX 변경이면 최종 화면 캡처(최대 3장) 후 완료 보고에 첨부 — 실패 시 사유 한 줄 (STOP 아님)
 - [ ] Gate 3 통과 — 자율 모드: 확인 없이 자동 ship / 게이트 모드: 사용자 확인 (commit 전)
 - [ ] 커밋 완료 (plans/ 파일 제외) — normal: 논리 단위 분할, 그룹 1개면 단일, 최대 4개 / fast: 단일 커밋
