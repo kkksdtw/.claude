@@ -1,4 +1,8 @@
 {
+  "env": {
+    "VITEST_MAX_FORKS": "3",
+    "VITEST_MAX_THREADS": "3"
+  },
   "permissions": {
     "allow": [
       "Bash",
