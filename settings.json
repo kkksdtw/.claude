@@ -96,6 +96,15 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Write|Edit|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/hooks/no-comments.js\""
+          }
+        ]
+      },
+      {
         "matcher": "*",
         "hooks": [
           {

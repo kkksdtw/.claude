@@ -461,17 +461,14 @@ const orders = table('orders', {
 
 ### Status Transition Considerations
 
-Document valid transitions in comments:
+Express valid transitions as code, not comments:
 
 ```typescript
-const orders = table('orders', {
-  id: bigint('id').primaryKey().autoincrement(),
-  // Status transitions:
-  // pending -> confirmed -> shipped -> delivered
-  // pending -> cancelled
-  // confirmed -> cancelled
-  status: varchar('status', 20).notNull().default('pending'),
-});
+const transitions = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['shipped', 'cancelled'],
+  shipped: ['delivered'],
+} as const;
 ```
 
 ---
