@@ -48,7 +48,7 @@ kubectl config current-context                                       # kube cont
 
 - 대상 컨텍스트(account/region/cluster) 확인 없이 mutation 실행.
 - `terraform state rm/push`, `terraform apply -auto-approve`를 승인 없이 실행.
-- GitOps 클러스터에 `kubectl apply/edit`로 직접 변경 (→ ArgoCD가 되돌리고 drift만 남는다. git을 통해 변경한다. [kubernetes.md](kubernetes.md) 참고).
+- GitOps 클러스터에 `kubectl apply/edit`로 직접 변경 (→ ArgoCD가 되돌리고 drift만 남는다. git을 통해 변경한다. [eks](../../skills/eks/SKILL.md) 참고).
 - `kubectl delete`, `aws ... delete-*`를 미리보기·승인 없이 실행.
 - **사용자 승인 없이** main/master 브랜치에 직접 commit. (승인 게이트를 거친 워크플로우 — 예: orchestrate main 모드의 Gate 3 — 는 예외)
-- 비용 분석/청구 데이터 조회 — **MSP 대시보드에서 별도 관리됨**. [aws.md](aws.md) 참고.
+- 비용 분석/청구 데이터 조회 — **MSP 대시보드에서 별도 관리됨**. [aws](../../skills/aws/SKILL.md) 참고.

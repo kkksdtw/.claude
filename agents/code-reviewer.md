@@ -108,8 +108,6 @@ Customize based on your project's `CLAUDE.md` or skill files.
 
 When reviewing React/Next.js code, you MUST check against the Vercel React Best Practices.
 
-**Reference:** Read `~/.claude/skills/vercel-react-best-practices/AGENTS.md` for full rules.
-
 Critical checks:
 - **Waterfall patterns** — sequential awaits, missing Promise.all(), no Suspense boundaries
 - **Bundle bloat** — barrel file imports, missing dynamic imports, eagerly loaded third-party scripts

@@ -13,17 +13,16 @@
 - **소스 코드에 주석을 쓰지 않는다** — 한 줄·블록·docstring·JSDoc·TODO·`ponytail:` 주석 모두 금지. 의도는 이름·구조·테스트로 드러낸다. 기존 주석은 건드리지 않는다. 예외는 도구가 해석하는 지시문(`eslint-disable`, `@ts-expect-error`, `# noqa`, shebang 등)뿐이다. ponytail의 `ponytail:` 주석 규칙보다 우선하며, 단순화의 한계는 주석 대신 최종 보고에 한 줄로 남긴다. PreToolUse 훅 [scripts/hooks/no-comments.js](scripts/hooks/no-comments.js)가 강제한다.
 - Do not use abstract words for all function names, variable names. (e.g. Info, Data, Item etc..)
 - Follow naming conventions: [rules/common/naming-conventions.md](rules/common/naming-conventions.md) — prefer the shortest unambiguous name (e.g. `getList` → `list`, `findUserById` → `find`).
-- Use the **namer** agent ([agents/namer.md](agents/namer.md)) when proposing or reviewing identifier names; run `/check-naming` ([commands/check-naming.md](commands/check-naming.md)) to audit existing code.
+- Use the **naming** skill ([skills/naming/SKILL.md](skills/naming/SKILL.md)) when proposing or reviewing identifier names; run `/naming` to audit existing code.
 
 ## DevOps / Infra (AWS · Terraform · EKS · GitHub Actions)
 
 환경: AWS 자원이 **콘솔(legacy) ↔ Terraform**로 분리됨 · 서비스는 **EKS + GitOps(ArgoCD/Flux)** · CI/CD는 **GitHub Actions** · **비용은 MSP 대시보드 별도(harness 범위 밖)**.
 
 - **실행 안전(필독)**: 읽기는 자동, 변경(apply/delete/sync/rerun)은 승인 — [rules/devops/safety.md](rules/devops/safety.md). 대상 account/region/context를 항상 먼저 확인.
-- 지식: [rules/devops/](rules/devops/) — terraform · kubernetes · github-actions · aws · safety
-- command: `/infra` ([commands/infra.md](commands/infra.md)) — `tf-import` · `drift` · `eks-debug` · `ci-debug` · `inventory`
-- agent: **terraform-reviewer** · **eks-doctor** · **cicd-reviewer** · **aws-auditor**
-- skill(자동 활성화): **terraform** · **eks** · **github-actions**
+- 지식 skill(자동 활성화): **terraform** · **eks** · **github-actions** · **aws** — [skills/](skills/)
+- 절차 skill: `/eks-debug` · `/ci-debug` · `/tf-drift` · `/aws-inventory`(읽기 전용, 자동 활성화) · `/tf-import`(state 변경, 명시 호출 전용)
+- agent: **terraform-reviewer** · **eks-doctor** · **cicd-reviewer** · **aws-auditor** — 대응 지식 skill을 프리로드
 
 # CLAUDE.md
 
