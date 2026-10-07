@@ -24,6 +24,13 @@
 - 절차 skill: `/eks-debug` · `/ci-debug` · `/tf-drift` · `/aws-inventory`(읽기 전용, 자동 활성화) · `/tf-import`(state 변경, 명시 호출 전용)
 - agent: **terraform-reviewer** · **eks-doctor** · **cicd-reviewer** · **aws-auditor** — 대응 지식 skill을 프리로드
 
+## Browser
+
+- 브라우저 작업은 **obscura**(`mcp__obscura__browser_*`)만 쓴다. 단순 페이지 읽기는 `obscura fetch <url> --dump markdown`.
+- 읽기·탐색은 자동, 입력·클릭·JS 실행·쿠키/스토리지는 승인 — [settings.json](settings.json) `permissions`가 강제한다. Chrome 확장·내장 브라우저는 deny.
+- 실제 렌더링 검증(레이아웃·반응형·대비·스크린샷)은 **ux-reviewer** agent에 URL과 함께 위임한다. Chrome(`chrome-devtools`)은 이 agent에만 연결된다.
+- 그 밖에 obscura로 안 되면(로그인 세션 필요 등) 다른 브라우저로 넘어가지 말고 멈추고 보고한다. `--stealth`는 사용자가 명시할 때만 켠다.
+
 # CLAUDE.md
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
@@ -89,3 +96,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+# graphify
+- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
+When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
