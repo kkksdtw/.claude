@@ -13,16 +13,16 @@
 ```
 
 - 70자 이내
-- 영문 사용 권장 (한글도 허용)
-- 동사 원형으로 시작
+- **설명은 한글로 쓴다** — squash 머지 시 PR 제목이 그대로 커밋 메시지가 되므로 [git-commit.md](git-commit.md)의 한글 규칙을 따른다. type·scope·식별자는 원문 유지
+- 명사형이나 "~ 추가/수정/제거"로 끝내고 마침표는 찍지 않는다
 - **브랜치명에 Jira 키가 있으면 제목 맨 뒤에 추가 (괄호 없이)**
 
 **Jira 키 패턴:** `[A-Z]+-[0-9]+` (예: GIFCA-123, DEV-456)
 
 **예시:**
-- 브랜치 `GIFCA-123-voucher-feature` → `feat(gifca/app): add voucher expiration notification GIFCA-123`
-- 브랜치 `DEV-456-fix-payment` → `fix(gifca/core): resolve payment callback race condition DEV-456`
-- 브랜치 `feature/add-auth` → `refactor(packages/drizzle): simplify transaction handling` (Jira 키 없음)
+- 브랜치 `GIFCA-123-voucher-feature` → `feat(gifca/app): 바우처 만료 알림 추가 GIFCA-123`
+- 브랜치 `DEV-456-fix-payment` → `fix(gifca/core): 결제 콜백 경쟁 상태 수정 DEV-456`
+- 브랜치 `feature/add-auth` → `refactor(packages/drizzle): 트랜잭션 처리 단순화` (Jira 키 없음)
 
 ## PR 본문 템플릿
 
