@@ -13,6 +13,7 @@
 - **소스 코드에 주석을 쓰지 않는다** — 한 줄·블록·docstring·JSDoc·TODO·`ponytail:` 주석 모두 금지. 의도는 이름·구조·테스트로 드러낸다. 기존 주석은 건드리지 않는다. 예외는 도구가 해석하는 지시문(`eslint-disable`, `@ts-expect-error`, `# noqa`, shebang 등)뿐이다. ponytail의 `ponytail:` 주석 규칙보다 우선하며, 단순화의 한계는 주석 대신 최종 보고에 한 줄로 남긴다. PreToolUse 훅 [scripts/hooks/no-comments.js](scripts/hooks/no-comments.js)가 강제한다.
 - Do not use abstract words for all function names, variable names. (e.g. Info, Data, Item etc..)
 - Follow naming conventions: [rules/common/naming-conventions.md](rules/common/naming-conventions.md) — prefer the shortest unambiguous name (e.g. `getList` → `list`, `findUserById` → `find`).
+- 커밋 메시지는 기존 컨벤션을 분석한 뒤 한글로 작성한다: [rules/common/git-commit.md](rules/common/git-commit.md)
 - Use the **naming** skill ([skills/naming/SKILL.md](skills/naming/SKILL.md)) when proposing or reviewing identifier names; run `/naming` to audit existing code.
 
 ## DevOps / Infra (AWS · Terraform · EKS · GitHub Actions)
