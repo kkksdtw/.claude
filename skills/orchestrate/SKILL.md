@@ -55,7 +55,7 @@ E2E pipeline: requirements → workspace → plan → expert review → implemen
 |------|--------|----------|
 | 요구사항 Q&A | 최대 2라운드 | **최대 1라운드** — 추론 가능하면 생략 |
 | 플랜 문서 | 7개 섹션 풀 문서 | **3개 섹션 축약** (Requirements · Implementation Phases · Risk) |
-| **Phase 2 (expert review)** | 전문가 4~6명 병렬 리뷰 + 수정 루프(2회) | **통째로 스킵** — start → impl로 직행 |
+| **Phase 2 (expert review)** | 비평가 1명 + 트리거에 해당하는 리스크 렌즈만 병렬 리뷰 → findings 검증 → 수정 루프(2회) | **통째로 스킵** — start → impl로 직행 |
 | impl verification | lint + build + test | **스킵** — done에서 1회로 통합 |
 | done verification | 조건부 스킵 가능 | **반드시 1회 실행** (lint + build + test) |
 | done 코드 리뷰 | security + code 병렬, 수정 루프 2회 | **동일하게 유지**, 수정 루프 **1회** |

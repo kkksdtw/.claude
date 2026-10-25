@@ -70,7 +70,7 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
    두 출력을 합쳐 변경 파일 목록을 만든다. `plans/{identifier}.md`, `plans/{identifier}.state.json`은 제외한다.
 2. **에이전트 프롬프트 작성 및 병렬 실행**: Task 도구로 `security-reviewer` · `code-reviewer` · **ponytail 렌즈**를 **한 메시지에서 동시에** 실행
 
-   > **모델**: `code-reviewer`와 ponytail 렌즈는 `model: "sonnet"`으로 핀 고정한다. `security-reviewer`는 실제 코드의 취약점 캐치율을 위해 opus를 유지한다(핀하지 않음 — 메인 모델 상속).
+   > **모델**: `code-reviewer`와 ponytail 렌즈는 `model: "sonnet"`, `security-reviewer`는 실제 코드의 취약점 캐치율을 위해 `model: "opus"`를 **호출마다 명시한다.** 생략하면 에이전트 frontmatter(`security-reviewer`는 `sonnet`)가 적용되어 의도와 달라진다.
 
    > **ponytail 렌즈**는 과잉설계만 찾는 세 번째 리뷰어다 (`subagent_type: "general-purpose"`, 프롬프트는 아래 별도 블록). 나머지 둘은 **빠진 것**을 찾는 직업이라 아무도 **불필요한 것**을 찾지 않는다 — 이 자리를 비워두면 리뷰 결과가 항상 순증가한다. `security-reviewer`처럼 **나누지 않는다**(중복은 파일을 가로질러 성립한다).
 
@@ -90,14 +90,18 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
 ## 컨텍스트
 - 프로젝트 경로: {workPath}
 - 기술 스택: {state JSON의 techStack 값}
+- 플랜 파일: {planFile의 절대 경로} — Requirements와 Implementation Phases가 이번 변경의 의도입니다
 - 변경된 파일 목록:
 {step 1의 변경 파일 목록. code-reviewer를 분할했으면 이 에이전트가 맡은 그룹 파일만 삽입}
+- 변경분 확인: `git diff {baseBranch} -- {위 파일들}` (untracked 신규 파일은 전체가 변경분)
 
 ## 작업
-1. 위 파일들을 Read 도구로 읽으세요.
-2. {security: 보안 취약점 | code: 코드 품질, 패턴 일관성} 관점에서 리뷰하세요.
+1. 플랜 파일을 읽고, 변경분(diff)을 먼저 본 뒤 필요한 파일만 Read로 전체를 읽으세요. 판단 대상은 변경된 줄과 그 줄이 영향을 주는 범위입니다.
+2. {security: 보안 취약점 | code: ① **스펙 충족** — 플랜의 Requirements가 빠짐없이 구현됐는가, 요청되지 않은 동작이 추가되지 않았는가 ② 정확성 버그 ③ 패턴 일관성} 관점에서 리뷰하세요.
 3. 제공된 변경 파일 안에서 판단을 우선하세요. 기존 패턴과의 일관성 확인이 꼭 필요한 경우에만 직접 관련된 파일을 좁게 Grep/Glob 하세요 — 변경 파일 밖으로의 광역 탐색은 불필요한 왕복으로 리뷰 지연의 주원인이므로 최소화합니다.
-4. **(code-reviewer만)** 사람 리뷰어를 위한 리뷰 동선을 도출하세요. 이미 위에서 파일을 전부 읽었으므로 **추가 탐색 없이** 판단합니다.
+4. 파일을 생성·수정하지 마세요. 리뷰만 하고 결과는 JSON으로 보고합니다.
+5. CRITICAL/HIGH에는 반드시 `evidence`를 붙이세요 — `file:line`과 함께, 어떤 입력·상태에서 어떤 잘못된 결과가 나오는지. 구체적인 실패 시나리오를 댈 수 없으면 MEDIUM 이하로 매기세요.
+6. **(code-reviewer만)** 사람 리뷰어를 위한 리뷰 동선을 도출하세요. 이미 위에서 파일을 전부 읽었으므로 **추가 탐색 없이** 판단합니다.
    - 판단 기준: **"이 줄이 잘못됐을 때 사람만 알아챌 수 있는가?"** → 그렇다면 `focus`, 아니면 `mechanical`.
    - `focus`: 설계 선택, 트랜잭션·동시성 경계, 에러 처리 분기, 기존 계약에 영향을 주는 지점. **최대 5개**, 중요도 순. 파일만이 아니라 줄 범위까지 짚습니다.
      {분할 실행 시에만 삽입: 당신은 전체 변경의 일부만 담당하므로 최대 3개까지만 뽑고, 담당 파일 안에서 판단하세요.}
@@ -111,7 +115,7 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
 {
   "agent": "security-reviewer",
   "findings": [
-    { "severity": "CRITICAL | HIGH | MEDIUM | LOW", "finding": "...", "recommendation": "...", "file": "..." }
+    { "severity": "CRITICAL | HIGH | MEDIUM | LOW", "finding": "...", "recommendation": "...", "file": "...", "evidence": "src/a.ts:42 — ... (CRITICAL/HIGH 필수)" }
   ]
 }
 
@@ -119,7 +123,7 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
 {
   "agent": "code-reviewer",
   "findings": [
-    { "severity": "CRITICAL | HIGH | MEDIUM | LOW", "finding": "...", "recommendation": "...", "file": "..." }
+    { "severity": "CRITICAL | HIGH | MEDIUM | LOW", "finding": "...", "recommendation": "...", "file": "...", "evidence": "src/a.ts:42 — ... (CRITICAL/HIGH 필수)" }
   ],
   "focus": [
     { "file": "src/notification/send.ts", "lines": "42-88", "why": "재시도 백오프 로직 — 이 PR의 핵심 판단" }
@@ -162,8 +166,15 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
 지울 것이 없으면 "cuts": [], "net": 0
 ```
 
-3. **결과 처리** (state의 `attempts.codeFix`로 추적 — **normal 최대 2회 / fast 최대 1회**):
-   - CRITICAL/HIGH 발견 → `attempts.codeFix` +1 → **`implVerifiedClean=false`로 갱신** → state Write → 수정 후 step 1 verification loop 재실행 (수정으로 코드가 바뀌었으므로 스킵 조건이 거짓 → 반드시 전체 검증)
+3. **검증** (결과 처리 전, 메인 에이전트가 직접): CRITICAL/HIGH마다 `evidence`의 `file:line`을 Read로 확인한다. 지적 하나당 Read 1~2회로 끝내고 재리뷰를 띄우지 않는다.
+   - 실패 시나리오가 코드에서 실제로 성립 → 유지
+   - `evidence` 없음, 근거가 틀림, 이미 처리된 경로 → **MEDIUM으로 내린다** (§6 완료 보고에 "미확인"으로 합산)
+   - 보안 지적인데 코드로 확증·반증이 안 됨 → 유지 (의심만으로도 수정 대상이다)
+
+   > 검증 없이 수정하면 false positive가 `codeFix` 예산을 먹고, 멀쩡한 코드를 고치다 새 결함을 만든다.
+
+4. **결과 처리** (state의 `attempts.codeFix`로 추적 — **normal 최대 2회 / fast 최대 1회**):
+   - 검증을 통과한 CRITICAL/HIGH → `attempts.codeFix` +1 → **`implVerifiedClean=false`로 갱신** → state Write → 수정 후 step 1 verification loop 재실행 (수정으로 코드가 바뀌었으므로 스킵 조건이 거짓 → 반드시 전체 검증)
    - MEDIUM 이하만 → **자율 모드**: 발화하지 않고 자동 진행 (§6 완료 보고에 합산) · **게이트 모드**: 사용자에게 보고 후 진행 여부 확인
    - **ponytail `cuts`는 severity 규칙에 태우지 않는다.** 과잉설계 지적은 거의 전부 MEDIUM 이하로 매겨지므로 위 규칙에 넣으면 자율 모드에서 통째로 버려진다 — 리뷰어를 추가한 의미가 사라진다. 대신 **"고치는 diff가 지우는 diff보다 작은가"**로 판단해 그 자리에서 적용한다:
      - **적용**: `delta`가 음수이고 수정이 **기계적이며 그 파일 안에서 닫히는** cut (stdlib·native 교체, 죽은 코드 삭제, 구현체 하나뿐인 추상화 인라인화, shrink)
@@ -174,7 +185,7 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
 
    > fast의 한도가 1인 것은 **수정 1회 후에도 CRITICAL이 남으면 자동 해소가 아니라 사람 판단이 필요한 상황**이라는 뜻이다. 리뷰 자체나 첫 수정 시도를 생략하는 것이 아니다 — fast에서도 리뷰는 두 에이전트 병렬로 그대로 돈다.
 
-4. **리뷰 동선 보관**: code-reviewer의 `focus`/`mechanical`을 §4 PR 본문 작성에 사용하므로 보관한다. code-fix 루프가 돌아 리뷰를 재실행한 경우, 수정으로 줄 번호가 어긋났으므로 **가장 마지막 리뷰 결과의 값을 쓴다.** main 모드는 PR을 만들지 않으므로 사용하지 않는다.
+5. **리뷰 동선 보관**: code-reviewer의 `focus`/`mechanical`을 §4 PR 본문 작성에 사용하므로 보관한다. code-fix 루프가 돌아 리뷰를 재실행한 경우, 수정으로 줄 번호가 어긋났으므로 **가장 마지막 리뷰 결과의 값을 쓴다.** main 모드는 PR을 만들지 않으므로 사용하지 않는다.
 
    > **분할 실행한 경우**: 각 리뷰어의 `focus`를 모아 중요도 순 **상위 5개만** 남긴다 — 그룹별로 3개씩 나오면 PR에 9개가 실려 "전부 중요하다"가 되고, 동선을 좁혀주는 의미가 사라진다. `mechanical`은 같은 패턴끼리 줄 수를 합산해 병합한다.
 
@@ -316,7 +327,7 @@ EOF
 )"
 ```
 
-> **리뷰 포인트**는 §2 step 4에서 보관한 code-reviewer의 `focus`/`mechanical`을 그대로 매핑한다 — 여기서 새로 판단하지 않는다 (이미 변경 파일을 전부 읽은 에이전트의 결과가 더 정확하다).
+> **리뷰 포인트**는 §2 step 5에서 보관한 code-reviewer의 `focus`/`mechanical`을 그대로 매핑한다 — 여기서 새로 판단하지 않는다 (이미 변경 파일을 전부 읽은 에이전트의 결과가 더 정확하다).
 > 작성 규칙은 [pull-request.md](../../../rules/common/pull-request.md#리뷰-포인트-작성-규칙). 변경이 작고(대략 50줄 미만) 어디를 볼지 자명하면 이 섹션을 생략한다.
 
 PR 생성 후 → state JSON을 Read → 아래 필드 갱신 → Write:
