@@ -49,32 +49,22 @@ description: Start orchestrate workflow. Requirements Q&A → workspace setup �
 - 필수 항목이 모두 확인되면 종료
 - 사용자가 간략한 답변을 해도 추론 가능하면 그대로 진행 (과도한 질문 금지)
 
-> **자율 모드에서도 이 Q&A는 축소하지 않는다.** 자율 진행은 게이트 승인을 생략할 뿐, 요구사항 명확화는 그대로 유지한다. 필수 스펙이 없거나 여러 해석이 가능해 구현이 실질적으로 달라지는 항목은 [에스컬레이션 조건](../SKILL.md#autonomy-mode-게이트-자동-통과-vs-승인) 1번에 따라 반드시 질문한다.
->
-> **fast 모드는 라운드 수만 1회로 줄인다 — 에스컬레이션 조건 1번은 그대로다.** 1라운드 안에 필수 스펙이 확보되지 않으면 라운드를 늘리지 말고, 애매한 항목을 그 자리에서 질문한다. fast는 *묻는 횟수*를 줄이는 것이지 *모른 채 진행하는 것*이 아니다.
+> **자율 모드·fast 모드에서도 요구사항 명확화는 줄이지 않는다.** 필수 스펙이 없거나 해석이 갈리는 항목은 [에스컬레이션 조건](../SKILL.md#autonomy-mode-게이트-자동-통과-vs-승인) 1번에 따라 반드시 질문한다. fast는 라운드 수만 1회로 줄이므로, 1라운드 안에 필수 스펙이 확보되지 않으면 라운드를 늘리지 말고 애매한 항목을 그 자리에서 질문한다.
 
 **출력:** 구조화된 요구사항 문서 (plan 작성에 사용)
 
 ## 2. Identifier 결정
 
 feature 요약에서 kebab-case slug를 생성한다 (예: `add-dashboard`, `voucher-notification`).
-이 값이 state의 `identifier`이자, worktree 모드의 브랜치명이 된다.
+이 값이 state의 `identifier`이자, worktree를 새로 만들 때(§3-B)의 브랜치명이 된다.
 
 ## 3. Workspace Setup
 
 **Workspace 판별** — 플래그로 모드를 정한다: **플래그 없음 → worktree (기본)**, `--main` → main.
 
-**Autonomy 결정** ([SKILL.md](../SKILL.md#autonomy-mode-게이트-자동-통과-vs-승인) 기준) — workspace와 플래그로 `autonomy`를 확정해 state에 기록한다:
+**Autonomy 결정** — [SKILL.md 모드 결정 표](../SKILL.md#autonomy-mode-게이트-자동-통과-vs-승인)대로 `autonomy`를 확정해 state에 기록한다 (worktree + `--gated` 없음 → `auto`, 그 외 → `gated`). `--fast`는 영향을 주지 않는다.
 
-| workspace | `--gated` | autonomy |
-|-----------|:---------:|----------|
-| worktree (기본) | 없음 | `auto` (게이트 자동 통과) |
-| worktree (기본) | 있음 | `gated` |
-| main (`--main`) | 무관 | `gated` (자율 모드는 worktree 전용) |
-
-> `speed`는 §0.5에서 이미 확정됐다 — `--fast`는 위 표에 영향을 주지 않는다 (두 축은 직교).
-
-> 기본 경로는 **worktree 모드**다. 아래 두 절 중 해당하는 모드의 절차를 수행한다.
+아래 두 절 중 해당하는 모드의 절차를 수행한다.
 
 ### main 모드 (`--main` 플래그)
 
@@ -86,7 +76,7 @@ git status --porcelain
 ```
 
 - `workspace = "main"`, `branchName = null`, `workPath = WORK_PATH`, `worktreeCreated = false`, **`autonomy = "gated"`**
-- 자율 모드는 worktree 전용이다. `--main`으로 실행하면 **"main 모드는 게이트 승인 방식으로 진행합니다. 무인 진행(→ PR)이 필요하면 플래그 없이(기본 worktree) 실행하세요"**를 1줄 안내한다 ([safety.md](../../../rules/devops/safety.md) §4 — 실제 main/master 직접 commit 방지).
+- **"main 모드는 게이트 승인 방식으로 진행합니다. 무인 진행(→ PR)이 필요하면 플래그 없이(기본 worktree) 실행하세요"**를 1줄 안내한다.
 - working tree에 **기존 변경사항이 있으면** 사용자에게 알리고 진행 여부를 확인한다 — orchestrate의 변경분과 섞여 커밋 범위가 오염되는 것을 방지
 
 ### worktree 모드 (기본 — 플래그 없음)
@@ -117,19 +107,15 @@ DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@
 - 결과 기록: `workspace = "worktree"`, `branchName = $BRANCH_NAME`, `workPath = $WORK_PATH`, **`worktreeCreated = false`** (orchestrate가 만든 게 아니므로 cleanup이 제거하지 않는다).
 - **안전 가드:**
   - `BRANCH_NAME`이 비어 있으면(detached HEAD) → **STOP**: "현재 worktree가 detached HEAD입니다. feature 브랜치를 체크아웃한 뒤 다시 실행하세요."
-  - `BRANCH_NAME == DEFAULT_BRANCH`(base 브랜치 위의 worktree)면 자율 자동 커밋이 base 브랜치를 오염시킬 수 있다([safety.md](../../../rules/devops/safety.md) §4) → **에스컬레이션**: AskUserQuestion으로 "① 다른 feature 브랜치를 만들어 진행 / ② 게이트 승인 방식(`gated`)으로 이 브랜치에서 진행 / ③ 중단" 중 선택받는다. (에스컬레이션이므로 [발화 규율](../SKILL.md#output-discipline-발화-규율)의 발화 허용 시점이다.)
+  - `BRANCH_NAME == DEFAULT_BRANCH`(base 브랜치 위의 worktree)면 자율 자동 커밋이 base 브랜치를 오염시킬 수 있다([safety.md](../../../rules/devops/safety.md) §4) → **에스컬레이션**: AskUserQuestion으로 "① 다른 feature 브랜치를 만들어 진행 / ② 게이트 승인 방식(`gated`)으로 이 브랜치에서 진행 / ③ 중단" 중 선택받는다.
 - identifier(§2)는 state·plan 파일명에만 쓰고, 브랜치명으로는 쓰지 않는다.
 
 #### 3-B. 새 worktree 생성 (CREATE)
 
-> **CRITICAL: gtr은 Git subcommand다. 반드시 `git gtr`로 실행해야 한다. `gtr` 단독 실행은 command not found.**
+> gtr은 반드시 `git gtr` 형태로 실행한다 ([gtr 명령어](../SKILL.md#gtr-명령어-critical--worktree-모드-전용)).
 
 ```bash
-# CORRECT — 반드시 이 형태로 실행
 git gtr list 2>/dev/null && echo "GTR_AVAILABLE" || echo "GTR_NOT_AVAILABLE"
-
-# WRONG — 절대 이렇게 실행하지 않는다
-# gtr list                    ← command not found
 ```
 
 | 결과 | 행동 |
@@ -143,7 +129,7 @@ git gtr list 2>/dev/null && echo "GTR_AVAILABLE" || echo "GTR_NOT_AVAILABLE"
 # 1. 브랜치명 = identifier
 BRANCH_NAME="{identifier}"
 
-# 2. worktree 생성 — 반드시 "git gtr" 형태로 실행
+# 2. worktree 생성
 git gtr new "$BRANCH_NAME"
 
 # 3. worktree 경로 획득
@@ -160,8 +146,7 @@ cd "$WORK_PATH"
 - `.gtrconfig`의 `[copy]` 패턴에 매칭되는 `.env` 파일 복사
 - `[hooks] postCreate` 명령어 실행 (예: `pnpm install --frozen-lockfile`)
 
-**반드시 worktree에 진입하고 브랜치를 검증한 후** 다음 단계로 진행한다.
-이후 모든 작업(plan 작성, 파일 편집)은 worktree 안에서 수행한다.
+**반드시 worktree에 진입하고 브랜치를 검증한 후** 다음 단계로 진행한다. 이후 모든 작업은 worktree 안에서 수행한다.
 
 **이미 동일 브랜치의 worktree가 존재하는 경우:**
 - AskUserQuestion: "이미 {BRANCH_NAME} worktree가 존재합니다. 해당 worktree를 사용할까요?"
@@ -174,8 +159,6 @@ cd "$WORK_PATH"
 ```bash
 mkdir -p plans/
 ```
-
-> plan·state 파일은 워크플로우 메타데이터다. **커밋에 포함하지 않는다.**
 
 ### 4a. Project Context 추출
 
@@ -308,12 +291,10 @@ Write 도구로 사람이 읽는 플랜 문서를 생성한다. **`speed` 값에
 **fast — 3개 섹션 축약:**
 
 1. **Requirements** — step 1에서 정리한 요구사항 (불릿 몇 줄)
-2. **Implementation Phases** (반드시 이 정확한 헤딩명 사용) — impl phase가 이 섹션을 파싱하므로 **normal과 동일한 구조를 유지한다.** 작업 항목 + 병렬/순차 + 에이전트 배정
+2. **Implementation Phases** (반드시 이 정확한 헤딩명 사용) — **축약하지 않고 normal과 동일한 구조를 유지한다.** impl phase가 이 섹션에서 에이전트 배정을 추출하므로, 부실하면 구현이 어긋나고 재작업 비용이 절약분을 넘는다
 3. **Risk Assessment** — 한 줄. 없으면 "없음"
 
 Workspace·Tech Stack·Affected Layers는 생략한다 — 앞의 둘은 state JSON에 이미 있고, Affected Layers는 fast가 대상으로 하는 작은 변경에서 Implementation Phases와 사실상 중복이다. Status는 `"Plan ready — review skipped (fast), proceed with /orchestrate --only impl"`로 적는다.
-
-> **Implementation Phases는 fast에서도 축약하지 않는다.** impl phase가 이 섹션에서 에이전트 배정을 추출한다 — 여기가 부실하면 구현이 어긋나고, 재작업 비용이 절약분을 넘는다.
 
 #### Implementation Phases 작성 규칙
 
@@ -346,11 +327,11 @@ phase 내 에이전트는 **동시에 출발해 가장 느린 하나가 끝나�
 
 두 파일 작성 완료 후, **`autonomy` 값에 따라 분기**한다:
 
-**자율 모드 (`auto`)** — [발화 규율](../SKILL.md#output-discipline-발화-규율)에 따라 **플랜 요약을 출력하지 않고 즉시 자동 통과**해 다음 phase로 진행한다. "플랜을 승인할까요?" 같은 확인을 **묻지 않는다.** 단 요구사항이 애매하거나 [에스컬레이션 조건](../SKILL.md#autonomy-mode-게이트-자동-통과-vs-승인)에 해당하면 멈추고 AskUserQuestion으로 질문한다.
+**자율 모드 (`auto`)** — 요약·확인 없이 침묵 자동 통과한다. [에스컬레이션 조건](../SKILL.md#autonomy-mode-게이트-자동-통과-vs-승인)에 해당할 때만 멈추고 질문한다.
 
 **게이트 모드 (`gated`)**:
 1. 플랜의 핵심 요약을 텍스트로 출력한다
-2. AskUserQuestion으로 확인: "플랜을 승인하고 expert review로 진행할까요?"
+2. AskUserQuestion으로 확인: "플랜을 승인하고 expert review로 진행할까요?" (fast: "플랜을 승인하고 구현으로 진행할까요?")
    - 승인 → state 갱신 후 다음 phase 진행
    - 수정 요청 → 사용자 피드백 반영 후 재확인
 
@@ -374,7 +355,7 @@ phase 내 에이전트는 **동시에 출발해 가장 느린 하나가 끝나�
 }
 ```
 
-> fast에서는 `~/.claude/skills/orchestrate/phases/review.md`를 **Read하지 않는다.** 곧바로 `impl.md`를 Read해 실행한다. **자율 모드에서는 스킵 사실을 발화하지 않는다** ([발화 규율](../SKILL.md#output-discipline-발화-규율)) — 완료 보고의 참고사항에 반영한다. 게이트 모드에서는 다음 Gate 프롬프트에 함께 적는다.
+> fast에서는 `review.md`를 **Read하지 않고** 곧바로 `impl.md`를 실행한다. 스킵 사실은 자율 모드에서는 완료 보고에, 게이트 모드에서는 다음 Gate 프롬프트에 적는다.
 
 ## Done Criteria
 
@@ -387,5 +368,4 @@ phase 내 에이전트는 **동시에 출발해 가장 느린 하나가 끝나�
 - [ ] Gate 1 통과 — 자율 모드: 확인 없이 자동 진행 / 게이트 모드: 사용자가 플랜 확인
 - [ ] fast 모드: `gates.review = "skipped"`, `currentPhase = "impl"`로 기록됨
 
-> `/orchestrate`로 실행 중이면 자동으로 다음 phase로 진행한다 — **normal: review / fast: impl**.
-> 단독 실행(`/orchestrate --only start`)이면 사용자에게 안내: normal은 `/orchestrate --only review`, fast는 `/orchestrate --only impl`.
+> 다음 phase는 **normal: review / fast: impl**이다. 단독 실행(`/orchestrate --only start`)이면 normal은 `/orchestrate --only review`, fast는 `/orchestrate --only impl`을 안내한다.

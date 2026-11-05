@@ -15,16 +15,7 @@ Prerequisite: `/orchestrate --only impl`에서 구현 완료.
 
 ## 0. State Guard
 
-아래 절차를 순서대로 수행한다. 실패 시 즉시 중단하고 사용자에게 알린다.
-
-1. **State 파일 탐색**: Glob으로 `plans/*.state.json` 검색
-   - 파일 없음 → STOP: "`/orchestrate --only start`를 먼저 실행하세요"
-   - 파일 여러 개 → 목록을 보여주고 AskUserQuestion으로 선택 요청
-2. **State 읽기**: Read 도구로 state.json을 읽고 JSON 파싱
-3. **작업 디렉토리 전환**: `workPath` 디렉토리 존재 확인 후 Bash `cd {workPath}` 실행 → 없으면 STOP. 이후 모든 명령은 이 디렉토리에서 실행
-4. **브랜치 확인** (worktree 모드만): `git branch --show-current`가 `branchName`과 일치하는지 확인 → 불일치 시 STOP. main 모드는 생략
-5. **필드 추출**: workspace, **autonomy**, **speed**, projectType, techStack, commands, planFile, branchName, baseBranch 등 필요한 값 보관
-6. **Phase 갱신**: state의 `currentPhase`를 `"done"`으로, `updatedAt`을 현재 시각으로 갱신 → Write로 저장
+[State Guard Pattern](../SKILL.md#state-guard-pattern-reviewimpldone-공통)을 수행한다. `currentPhase`는 `"done"`으로 갱신하고, 이 phase에서는 workspace·**autonomy**·**speed**·projectType·techStack·commands·planFile·branchName·baseBranch 값을 쓴다.
 
 ## 1. Verification Loop (최대 3회)
 
@@ -81,7 +72,7 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
    - `security-reviewer`는 **나누지 않는다.** 취약점은 파일을 가로질러 성립하므로(한 곳의 입력이 다른 곳에서 처리) 전체를 한 명이 봐야 한다.
    - 분할해도 모든 에이전트를 **한 메시지에서 동시에** 띄운다.
 
-   > **띄운 뒤에는 턴을 끝낸다.** 완료되면 하니스가 자동으로 재호출한다 — `sleep`으로 기다리거나 상태 파일을 폴링하지 않는다 ([Mandatory Rules 14](../SKILL.md#mandatory-rules)).
+   > **띄운 뒤에는 턴을 끝낸다.** 완료되면 하니스가 자동으로 재호출한다 — `sleep`으로 기다리거나 상태 파일을 폴링하지 않는다 ([Mandatory Rules 4](../SKILL.md#mandatory-rules)).
 
 **각 에이전트 프롬프트:**
 ```
@@ -183,7 +174,7 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
      - **적용은 1회만.** 적용했으면 `implVerifiedClean=false` → state Write → step 1 verification loop 재실행. `attempts.codeFix`는 **소모하지 않는다** (CRITICAL 해소 예산을 삭제 작업이 먹으면 안 된다). 재실행한 리뷰에서 나온 `cuts`는 다시 적용하지 않는다
    - `attempts.codeFix`가 한도(normal 2 / fast 1)에 도달했는데 CRITICAL/HIGH 잔존 → 사용자에게 판단 요청 (자율 모드도 [에스컬레이션 조건](../SKILL.md#autonomy-mode-게이트-자동-통과-vs-승인) 6번으로 멈춤. 카운터는 state에 영속 — 세션이 끊겨도 유지)
 
-   > fast의 한도가 1인 것은 **수정 1회 후에도 CRITICAL이 남으면 자동 해소가 아니라 사람 판단이 필요한 상황**이라는 뜻이다. 리뷰 자체나 첫 수정 시도를 생략하는 것이 아니다 — fast에서도 리뷰는 두 에이전트 병렬로 그대로 돈다.
+   > fast의 한도가 1인 것은 **수정 1회 후에도 CRITICAL이 남으면 자동 해소가 아니라 사람 판단이 필요한 상황**이라는 뜻이다. 리뷰 자체나 첫 수정 시도를 생략하는 것이 아니다 — fast에서도 리뷰는 세 리뷰어(security + code + ponytail) 병렬로 그대로 돈다.
 
 5. **리뷰 동선 보관**: code-reviewer의 `focus`/`mechanical`을 §4 PR 본문 작성에 사용하므로 보관한다. code-fix 루프가 돌아 리뷰를 재실행한 경우, 수정으로 줄 번호가 어긋났으므로 **가장 마지막 리뷰 결과의 값을 쓴다.** main 모드는 PR을 만들지 않으므로 사용하지 않는다.
 
@@ -210,7 +201,7 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
 
 **`autonomy` 값에 따라 분기**한다 ([발화 규율](../SKILL.md#output-discipline-발화-규율)).
 
-- **자율 모드 (`auto`, worktree 전용 — 기본)**: ship 전 요약을 **출력하지 않고** 곧바로 commit → push → PR 생성까지 **끝까지 무인으로 실행한다.** 완료 보고는 §6 Output에서 1회. "PR을 만들까요?"·"진행할까요?"·"commit할까요?" 같은 확인을 **절대 묻지 않는다** — 자율 모드의 핵심은 ship(PR 생성)까지 무인 완료다. **유일한 예외:** 최종 diff에 [에스컬레이션 조건](../SKILL.md#autonomy-mode-게이트-자동-통과-vs-승인)(운영/스테이징 데이터 손실·비가역 변경·보안 민감·호환성 파괴)에 해당하는 변경이 실제로 있을 때만 멈추고 AskUserQuestion으로 질문한다. 그 외에는 어떤 경우에도 멈추지 않고 PR까지 완료한다.
+- **자율 모드 (`auto`)**: ship 전 요약 없이 commit → push → PR 생성까지 무인으로 실행한다. 확인을 묻지 않으며, 완료 보고는 §6에서 1회 한다. **유일한 예외:** 최종 diff에 [에스컬레이션 조건](../SKILL.md#autonomy-mode-게이트-자동-통과-vs-승인) 2~4번(데이터 손실·비가역 변경·보안 민감·호환성 파괴)에 해당하는 변경이 실제로 있을 때만 멈추고 질문한다.
 - **게이트 모드 (`gated`)**: 아래 요약을 정리해 출력하고 **STOP** — 사용자 승인을 받는다:
   - Verification 결과 (lint/build/test 각각 pass/fail)
   - Code review 결과 요약
@@ -258,8 +249,6 @@ state.json에 `testDatabase.name`이 있고 실제 DB가 존재하면 기존 DB�
 git status
 
 # 2. 그룹별로 스테이징 → 커밋 (git add -A 사용 금지 — 그룹 경계가 무너진다)
-#    프로젝트의 .claude/rules/git-workflow.md 또는 CLAUDE.md의 commit convention을 따름
-#    Claude/AI를 Co-Author·contributor로 넣지 않는다 — Co-Authored-By 트레일러를 추가하지 않는다.
 git add {그룹 1 파일들 개별 지정}
 git commit -m "$(cat <<'EOF'
 {type}({scope}): {description}
@@ -276,8 +265,7 @@ EOF
 git status --porcelain
 ```
 
-> commit format은 프로젝트의 `.claude/rules/git-workflow.md` 또는 CLAUDE.md의 convention을 따른다. 규칙이 없으면 `"type(scope): description"` 형식을 기본으로 사용.
-> **Claude/AI 계정을 커밋 contributor로 포함하지 않는다** — `Co-Authored-By: Claude ...` 트레일러를 넣지 않는다. 프로젝트 convention이 co-author 트레일러를 요구하더라도 AI 계정은 제외하고 사람 기여자만 남긴다.
+> 커밋 메시지는 [git-commit.md](../../../rules/common/git-commit.md)를 따른다 (히스토리 컨벤션 분석 → 한글 설명). **`Co-Authored-By: Claude ...` 등 AI 트레일러를 넣지 않는다** — 프로젝트 convention이 co-author 트레일러를 요구해도 사람 기여자만 남긴다.
 
 ## 4. Ship
 
@@ -299,36 +287,17 @@ state JSON을 Read → 아래 필드 갱신 → Write:
 # 1. Push
 git push -u origin {branchName}
 
-# 2. PR 생성 — rules/common/pull-request.md 템플릿을 따름
-#    --assignee @me: 본인을 담당자로 지정해 GitHub 알림을 받는다.
-#    (PR 작성자는 자신을 reviewer로 요청할 수 없으므로 reviewer 대신 assignee 사용)
-gh pr create --base {baseBranch} --assignee @me --title "{type}({scope}): {description}" --body "$(cat <<'EOF'
-## 개요
-{이 PR이 해결하는 문제 또는 추가하는 기능}
-
-## 주요 변경사항
-- {논리적 단위로 정리된 변경사항}
-
-## 리뷰 포인트
-**집중해서 볼 곳:**
-- `{focus[].file}:{focus[].lines}` — {focus[].why}
-
-**기계적 변경 (빠르게 넘어가도 됨):**
-- `{mechanical[].files}` ({mechanical[].lines}줄) — {mechanical[].note}
-
-## 테스트
-- [ ] E2E 테스트 추가/수정
-- [ ] 로컬 테스트 완료
-- [ ] 기존 테스트 통과
-
-## 참고사항
-{필요한 경우에만}
+# 2. PR 생성 — 제목·본문은 rules/common/pull-request.md 템플릿을 따른다
+#    --assignee @me: PR 작성자는 자신을 reviewer로 요청할 수 없으므로 assignee로 지정해 알림을 받는다
+gh pr create --base {baseBranch} --assignee @me --title "{pull-request.md 제목 규칙}" --body "$(cat <<'EOF'
+{pull-request.md 기본 템플릿}
 EOF
 )"
 ```
 
-> **리뷰 포인트**는 §2 step 5에서 보관한 code-reviewer의 `focus`/`mechanical`을 그대로 매핑한다 — 여기서 새로 판단하지 않는다 (이미 변경 파일을 전부 읽은 에이전트의 결과가 더 정확하다).
-> 작성 규칙은 [pull-request.md](../../../rules/common/pull-request.md#리뷰-포인트-작성-규칙). 변경이 작고(대략 50줄 미만) 어디를 볼지 자명하면 이 섹션을 생략한다.
+> **리뷰 포인트**는 §2 step 5에서 보관한 code-reviewer의 값을 그대로 매핑한다 — 여기서 새로 판단하지 않는다 (이미 변경 파일을 전부 읽은 에이전트의 결과가 더 정확하다). 생략 기준은 [pull-request.md](../../../rules/common/pull-request.md#리뷰-포인트-작성-규칙)를 따른다.
+> - 집중해서 볼 곳: `` `{focus[].file}:{focus[].lines}` — {focus[].why} ``
+> - 기계적 변경: `` `{mechanical[].files}` ({mechanical[].lines}줄) — {mechanical[].note} ``
 
 PR 생성 후 → state JSON을 Read → 아래 필드 갱신 → Write:
 ```jsonc
@@ -344,18 +313,7 @@ PR 생성 후 → state JSON을 Read → 아래 필드 갱신 → Write:
 
 ## 5. Test DB Cleanup
 
-state.json의 `testDatabase` 필드가 존재하면 `~/.claude/skills/orchestrate/references/test-db-isolation.md`의 Cleanup 절차를 수행한다.
-
-`testDatabase.type`에 따라 해당 drop 명령어를 실행한다:
-
-| type | 명령어 |
-|------|--------|
-| postgresql | `dropdb "{testDatabase.name}" 2>/dev/null \|\| true` |
-| mysql | `mysql -u root -e "DROP DATABASE IF EXISTS \`{testDatabase.name}\`;" 2>/dev/null \|\| true` |
-| sqlite | `rm -f "{SQLite 파일 경로}" 2>/dev/null \|\| true` |
-| mongodb | `mongosh --eval "db.getSiblingDB('{testDatabase.name}').dropDatabase()" 2>/dev/null \|\| true` |
-
-실행 후 state.json의 `testDatabase`를 `null`로 갱신한다.
+state.json의 `testDatabase.name`이 있으면 [test-db-isolation.md](../references/test-db-isolation.md#cleanup-자동)의 Cleanup 절차(`testDatabase.type`별 drop 명령)를 수행하고, state의 `testDatabase`를 `null`로 갱신한다.
 
 > cleanup 실패 시 에러를 무시하고 진행한다. Output에서 결과(성공/실패)를 보고한다.
 
