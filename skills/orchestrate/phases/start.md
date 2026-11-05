@@ -12,7 +12,8 @@ description: Start orchestrate workflow. Requirements Q&A → workspace setup �
    - 이어서 진행 → state의 `currentPhase`에 해당하는 phase로 재개
    - 새로 시작 → 기존 state 파일 삭제 후 계속
 3. worktree 모드(기본)면 `git worktree list`로 동일 identifier의 worktree도 확인한다
-4. 매칭되는 것이 없으면 → 정상 진행
+4. **동시 실행 검사** ([Mandatory Rules 3](../SKILL.md#mandatory-rules)) — 1에서 찾은 state 중 `currentPhase ≠ "completed"`인 워크플로우가 이미 2개 이상이면, 사용자에게 경고하고 기존 워크플로우를 끝낸 뒤 순차로 시작하도록 권고한다. 다른 worktree·레포에서 실행 중인 세션은 감지할 수 없으므로 AskUserQuestion으로 한 번 확인한다
+5. 매칭되는 것이 없으면 → 정상 진행
 
 ## 0.5. Speed 판별 (`--fast`)
 
@@ -102,7 +103,10 @@ MAIN_TOP=$(git worktree list | head -1 | awk '{print $1}')   # main 작업 트�
 WORK_PATH="$CURRENT_TOP"
 BRANCH_NAME=$(git branch --show-current)
 DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-main}
 ```
+
+- 여기서 구한 `DEFAULT_BRANCH`는 §4b의 `baseBranch`로 그대로 쓴다.
 
 - 결과 기록: `workspace = "worktree"`, `branchName = $BRANCH_NAME`, `workPath = $WORK_PATH`, **`worktreeCreated = false`** (orchestrate가 만든 게 아니므로 cleanup이 제거하지 않는다).
 - **안전 가드:**
@@ -196,6 +200,8 @@ mkdir -p plans/
 
 ### 4b. Base Branch 감지
 
+3-A에서 이미 `DEFAULT_BRANCH`를 구했으면 그 값을 쓰고, 아래 명령을 다시 실행하지 않는다.
+
 ```bash
 git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'
 ```
@@ -203,7 +209,7 @@ git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/ori
 
 ### 4c. State JSON — `plans/{identifier}.state.json`
 
-**가장 먼저 생성.** 모든 에이전트가 읽는 single source of truth.
+**4d의 plan markdown보다 먼저 생성한다.** 모든 에이전트가 읽는 single source of truth이며, 4a·4b에서 구한 값으로 채운다.
 
 Write 도구로 아래 JSON을 생성한다 (모든 필드를 채울 것):
 
