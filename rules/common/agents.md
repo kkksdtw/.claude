@@ -8,6 +8,7 @@ Located in `~/.claude/agents/`:
 |-------|---------|-------------|
 | architect | System design | Architectural decisions |
 | schema-designer | Database schema design | Schema changes, creating |
+| dba | 대화형 스키마 설계 멘토 (질문·근거 설명) | 요구사항이 모호하거나 설계를 배우면서 진행할 때 |
 | api-designer | REST API design review | API endpoint design, contract review |
 | code-reviewer | Code review | After writing code |
 | security-reviewer | Security analysis | Before commits |
